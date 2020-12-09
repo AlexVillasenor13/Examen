@@ -55,14 +55,15 @@ func client() {
 				fmt.Println(result)
 			}
 		case 2:
+			var result string
 			scanner := bufio.NewScanner(os.Stdin)
 			fmt.Print("Name: ")
 			scanner.Scan()
-			name := scanner.Text()
+			file_name := scanner.Text()
 			fmt.Print("Location: ")
 			scanner.Scan()
 			loc := scanner.Text()
-			file, err := os.Open(loc + name + ".txt")
+			file, err := os.Open(loc + file_name)
 
 			if err != nil {
 				fmt.Println(err)
@@ -85,12 +86,12 @@ func client() {
 				fmt.Println(err)
 				return
 			}
-			fmt.Println(string(bs), "bytes:", count)
-			err = c.Call("Server.SendFile", bs, &name)
+			fmt.Println(bs, "bytes:", count)
+			err = c.Call("Server.SendFile", [][]byte{[]byte(loc + file_name), bs, []byte(name)}, &result)
 			if err != nil {
 				fmt.Println(err)
 			} else {
-				fmt.Println(name)
+				fmt.Println(result)
 			}
 		case 3:
 			printChat()
@@ -129,6 +130,14 @@ func (this *ClientServer) SetChat(chat []string, reply *string) error {
 	this.Chat = chat
 	Chat = chat
 	this.printChat()
+	return nil
+}
+func (this *ClientServer) SetFile(data [][]byte, reply *string) error {
+	*reply = "File received"
+	fmt.Print("File Received from ")
+	fmt.Println(string(data[2]))
+	fmt.Println(data[1])
+	fmt.Println(string(data[1]))
 	return nil
 }
 func (this *ClientServer) printChat() {

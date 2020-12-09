@@ -79,15 +79,41 @@ func (this *Server) SendMssg(data []string, reply *string) error {
 		return errors.New("Message NOT received!!")
 	}
 }
-func (this *Server) SendFile(data []byte, reply *string) error {
-	if string(data) != "" {
-		this.NamesFiles = append(this.NamesFiles, *reply)
-		this.Files = append(this.Files, data)
+func (this *Server) SendFile(data [][]byte, reply *string) error {
+	if string(data[0]) != "" {
+		this.NamesFiles = append(this.NamesFiles, string(data[0]))
+		this.Files = append(this.Files, data[1])
 		local_files = this.NamesFiles
 		*reply = "File received"
+		fmt.Print("File Received from ")
+		fmt.Println(string(data[2]))
+		fmt.Println(data[1])
+		fmt.Println(string(data[1]))
+		this.sendFileusers(data)
 		return nil
 	} else {
 		return errors.New("File NOT received!!")
+	}
+}
+
+func (this *Server) sendFileusers(data [][]byte) {
+	i_user := this.findUser(string(data[2]))
+
+	for i, port := range this.UsersPort {
+		if i != i_user {
+			port_str := "127.0.0.1:" + strconv.Itoa(port)
+			c, err := rpc.Dial("tcp", port_str)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			result := ""
+			err = c.Call("ClientServer.SetFile", data, &result)
+			if err != nil {
+				fmt.Println(err)
+			}
+			c.Close()		
+			}	
 	}
 }
 
