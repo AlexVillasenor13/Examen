@@ -5,18 +5,23 @@ import (
 	"fmt"
 	"net"
 	"net/rpc"
+	"os"
 	"strconv"
+	"strings"
 )
 
 type Server struct {
-	Users     []string
-	UsersChat []*[]string
-	UsersPort []int
-	Files     []string
-	Chat      []string
+	Users      []string
+	UsersChat  []*[]string
+	UsersPort  []int
+	NamesFiles []string
+	Files      [][]byte
+	Chat       []string
 }
 
 var port int
+var local_chat []string
+var local_files []string
 
 func (this *Server) findUser(name string) int {
 	for i, n := range this.Users {
@@ -56,8 +61,6 @@ func (this *Server) Exit(name string, reply *string) error {
 		this.UsersChat = this.UsersChat[:len(this.UsersChat)-1]
 		*reply = name + " Disconnected :c"
 		fmt.Println(*reply)
-		fmt.Println(this.Users)
-		fmt.Println(this.UsersChat)
 		*reply = "Disconnected Successfully :c"
 		return nil
 	} else {
@@ -76,8 +79,21 @@ func (this *Server) SendMssg(data []string, reply *string) error {
 		return errors.New("Message NOT received!!")
 	}
 }
+func (this *Server) SendFile(data []byte, reply *string) error {
+	if string(data) != "" {
+		this.NamesFiles = append(this.NamesFiles, *reply)
+		this.Files = append(this.Files, data)
+		local_files = this.NamesFiles
+		*reply = "File received"
+		return nil
+	} else {
+		return errors.New("File NOT received!!")
+	}
+}
+
 func (this *Server) addChat(data []string) {
 	this.Chat = append(this.Chat, data[0]+": "+data[1])
+	local_chat = this.Chat
 	i_user := this.findUser(data[0])
 
 	for i, chat := range this.UsersChat {
@@ -85,18 +101,19 @@ func (this *Server) addChat(data []string) {
 			*chat = append(*chat, "You: "+data[1])
 		} else {
 			*chat = append(*chat, data[0]+": "+data[1])
-			port_str := "127.0.0.1:" + strconv.Itoa(this.UsersPort[i])
-			c, err := rpc.Dial("tcp", port_str)
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			result := ""
-			err = c.Call("ClientServer.SetChat", *chat, &result)
-			if err != nil {
-				fmt.Println(err)
-			}
 		}
+		port_str := "127.0.0.1:" + strconv.Itoa(this.UsersPort[i])
+		c, err := rpc.Dial("tcp", port_str)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		result := ""
+		err = c.Call("ClientServer.SetChat", *chat, &result)
+		if err != nil {
+			fmt.Println(err)
+		}
+		c.Close()
 
 	}
 }
@@ -106,13 +123,28 @@ func (this *Server) printChat() {
 	for _, mssg := range this.Chat {
 		fmt.Println(mssg)
 	}
-	fmt.Println("----------------Chats------------------")
-	for _, chat := range this.UsersChat {
-		fmt.Println("----------------------------------")
-		for _, mssg := range *chat {
-			fmt.Println(mssg)
-		}
+}
+func printLocalChat() {
+	fmt.Println("----------------Chat------------------")
+	for _, mssg := range local_chat {
+		fmt.Println(mssg)
 	}
+}
+func printLocalFiles() {
+	fmt.Println("----------------Files------------------")
+	for _, mssg := range local_files {
+		fmt.Println(mssg)
+	}
+}
+
+func writeFile(content, file_name string) {
+	file, err := os.Create(file_name + ".txt")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer file.Close()
+	file.WriteString(content)
 }
 
 func server() {
@@ -136,6 +168,28 @@ func server() {
 func main() {
 	port = 1306
 	go server()
-	var input string
-	fmt.Scanln(&input)
+	var op int64
+	for {
+		fmt.Println("1) Show Chat")
+		fmt.Println("2) Show Files")
+		fmt.Println("3) Save Chat")
+		fmt.Println("4) Save Files")
+		fmt.Println("0) Exit")
+		fmt.Scanln(&op)
+
+		switch op {
+		case 1:
+			printLocalChat()
+		case 2:
+			printLocalFiles()
+		case 3:
+			writeFile(strings.Join(local_chat, "\n"), "Chat")
+			fmt.Println("Chat saved")
+		case 4:
+			writeFile(strings.Join(local_files, "\n"), "Files")
+			fmt.Println("Files saved")
+		case 0:
+			return
+		}
+	}
 }

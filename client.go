@@ -55,7 +55,43 @@ func client() {
 				fmt.Println(result)
 			}
 		case 2:
-			//files
+			scanner := bufio.NewScanner(os.Stdin)
+			fmt.Print("Name: ")
+			scanner.Scan()
+			name := scanner.Text()
+			fmt.Print("Location: ")
+			scanner.Scan()
+			loc := scanner.Text()
+			file, err := os.Open(loc + name + ".txt")
+
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+
+			defer file.Close()
+
+			stat, err := file.Stat()
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+
+			total := stat.Size()
+
+			bs := make([]byte, total)
+			count, err := file.Read(bs)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			fmt.Println(string(bs), "bytes:", count)
+			err = c.Call("Server.SendFile", bs, &name)
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				fmt.Println(name)
+			}
 		case 3:
 			printChat()
 		case 0:
